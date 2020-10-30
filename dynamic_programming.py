@@ -1,12 +1,9 @@
 import numpy as np
 import random
-from tqdm import tqdm
 
 gamma = 1 # discounting rate
 rewardSize = -0.5
-reward_R = 0
 gridSize = 8
-optimal_policy = np.empty((gridSize, gridSize), dtype = str)
 states = [[i, j] for i in range(gridSize) for j in range(gridSize)]
 
 # boundary states
@@ -41,7 +38,7 @@ ladder_2 = [[3, 3], [0, 0]]
 snake = [[0, 2], [3, 6]]
 
 
-def q1policy(initialPosition, action):
+def policy(initialPosition, action, reward_R):
     if initialPosition == terminationState:
         return initialPosition, 0
     if initialPosition == snake[0]:
@@ -67,36 +64,9 @@ def q1policy(initialPosition, action):
         return finalPosition, rewardSize
 
 
-
-    # if initialPosition == terminationState:
-    #     return initialPosition, 0
-    #
-    # elif initialPosition == ladder_1[0]:
-    #     return ladder_1[1], reward_R
-    #
-    # elif initialPosition == ladder_2[0]:
-    #     return ladder_2[1], 15            # 10+5
-    #
-    # elif initialPosition in winning_states:
-    #     return terminationState, 9.5        # -0.5+10
-    #
-    # elif initialPosition == snake[0]:
-    #     return snake[1], -3
-    #
-    # else:
-    #     reward = rewardSize
-    #     finalPosition = np.array(initialPosition) + np.array(action_key[action])
-    #
-    # if -1 in finalPosition or 8 in finalPosition:
-    #     finalPosition = initialPosition
-    #     reward = 0
-    #
-    # return finalPosition, reward
-
-
-
-def policy_evaluation(valueMap, verbose=False):
+def value_iteration(valueMap, reward_R, verbose=False):
     deltas = []
+    optimum_policy = np.empty((gridSize, gridSize), dtype=str)
     for it in range(1000):
         copyValueMap = np.copy(valueMap)
         deltaState = []
@@ -120,12 +90,16 @@ def policy_evaluation(valueMap, verbose=False):
                 actions = terminal_action
             else:
                 actions = general_actions
+            q = []
             for action in actions:
-                finalPosition, reward = q1policy(state, action)
+                finalPosition, reward = policy(state, action, reward_R)
                 expected_return = (1/len(actions))*(reward+(gamma*valueMap[finalPosition[0], finalPosition[1]]))
-                weightedRewards += expected_return
-            deltaState.append(np.abs(copyValueMap[state[0], state[1]] - weightedRewards))
-            copyValueMap[state[0], state[1]] = weightedRewards
+                q.append((expected_return, action))
+                # weightedRewards += expected_return
+            r, a = max(q)
+            deltaState.append(np.abs(copyValueMap[state[0], state[1]] - r))
+            copyValueMap[state[0], state[1]] = r
+            optimum_policy[state[0], state[1]] = a
 
         deltas.append(deltaState)
         valueMap = copyValueMap
@@ -134,14 +108,5 @@ def policy_evaluation(valueMap, verbose=False):
             print(valueMap)
             print()
         if max(deltaState) < 0.001:
-            print('epsilon convergence at iteration', it)
-            return valueMap
-
-
-value = policy_evaluation(np.zeros((gridSize, gridSize)), verbose=False)
-print(value)
-# print(policy)
-# # # q1_mc()
-# ep = q1GenerateEpisode()
-# for i in ep:
-#     print(i)
+            # print('epsilon convergence at iteration', it)
+            return valueMap, optimum_policy
